@@ -6,6 +6,8 @@ import { env } from '@config/env';
 import { generalRateLimiter } from '@shared/middlewares/rate-limit.middleware';
 import { errorHandlerMiddleware } from '@shared/middlewares/error-handler.middleware';
 import { authRoutes } from '@features/auth/auth.routes';
+import { vehiclesRoutes } from '@features/vehicles/vehicles.routes';
+import { driversRoutes } from '@features/drivers/drivers.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -26,6 +28,8 @@ export function createApp(): Application {
   });
 
   app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/vehicles', vehiclesRoutes);
+  app.use('/api/v1/drivers', driversRoutes);
 
   // 404 handler for unmatched routes
   app.use((_req, res) => {
