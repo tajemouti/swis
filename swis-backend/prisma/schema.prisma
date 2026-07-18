@@ -72,6 +72,7 @@ model User {
   role          Role           @relation(fields: [roleId], references: [id])
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
+  driver        Driver?
 
   @@index([roleId])
   @@map("users")
@@ -108,4 +109,88 @@ model AuditLog {
   @@index([userId])
   @@index([entityType, entityId])
   @@map("audit_logs")
+}
+
+// ============================================================
+// Sprint 2 — Fleet: Vehicles, Drivers
+// ============================================================
+
+enum VehicleStatus {
+  ACTIVE
+  MAINTENANCE
+  OFFLINE
+  RETIRED
+}
+
+model VehicleType {
+  id          String  @id @default(uuid())
+  name        String  @unique // e.g. "compactor", "container-truck", "sweeper"
+  capacityKg  Decimal @map("capacity_kg") @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  vehicles Vehicle[]
+
+  @@map("vehicle_types")
+}
+
+model Vehicle {
+  id             String        @id @default(uuid())
+  plateNumber    String        @unique @map("plate_number")
+  vehicleTypeId  String        @map("vehicle_type_id")
+  status         VehicleStatus @default(ACTIVE)
+  currentMileage Decimal       @default(0) @map("current_mileage") @db.Decimal(10, 2)
+  fuelCapacity   Decimal       @map("fuel_capacity") @db.Decimal(10, 2)
+  purchaseDate   DateTime?     @map("purchase_date")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  vehicleType VehicleType @relation(fields: [vehicleTypeId], references: [id])
+
+  @@index([vehicleTypeId])
+  @@index([status])
+  @@map("vehicles")
+}
+
+enum DriverStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model Driver {
+  id            String       @id @default(uuid())
+  userId        String?      @unique @map("user_id")
+  firstName     String       @map("first_name")
+  lastName      String       @map("last_name")
+  licenseNumber String       @unique @map("license_number")
+  licenseExpiry DateTime     @map("license_expiry")
+  phone         String
+  status        DriverStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  user       User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  violations DriverViolation[]
+
+  @@index([status])
+  @@map("drivers")
+}
+
+model DriverViolation {
+  id          String   @id @default(uuid())
+  driverId    String   @map("driver_id")
+  type        String
+  description String?
+  occurredAt  DateTime @map("occurred_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@map("driver_violations")
 }
