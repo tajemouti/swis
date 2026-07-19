@@ -3,3 +3,4 @@ dist/
 .env
 *.log
 coverage/
+tests/test-socket.js

@@ -149,6 +149,7 @@ model Vehicle {
   deletedAt DateTime? @map("deleted_at")
 
   vehicleType VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  position    VehiclePosition?
 
   @@index([vehicleTypeId])
   @@index([status])
@@ -193,4 +194,27 @@ model DriverViolation {
 
   @@index([driverId])
   @@map("driver_violations")
+}
+
+// ============================================================
+// Sprint 3 — Live GPS Tracking
+// ============================================================
+
+/// Latest known position per vehicle — the source of truth for the live map.
+/// Historical breadcrumb trail (route_points) is introduced in Sprint 4 once
+/// Routes exist; this table is intentionally one-row-per-vehicle (upsert).
+model VehiclePosition {
+  id        String   @id @default(uuid())
+  vehicleId String   @unique @map("vehicle_id")
+  latitude  Decimal  @db.Decimal(9, 6)
+  longitude Decimal  @db.Decimal(9, 6)
+  speedKmh  Decimal  @map("speed_kmh") @db.Decimal(5, 2)
+  heading   Int // degrees, 0-359
+  recordedAt DateTime @map("recorded_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_positions")
 }
