@@ -150,6 +150,7 @@ model Vehicle {
 
   vehicleType VehicleType @relation(fields: [vehicleTypeId], references: [id])
   position    VehiclePosition?
+  routes      Route[]
 
   @@index([vehicleTypeId])
   @@index([status])
@@ -177,6 +178,7 @@ model Driver {
 
   user       User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   violations DriverViolation[]
+  routes     Route[]
 
   @@index([status])
   @@map("drivers")
@@ -217,4 +219,91 @@ model VehiclePosition {
 
   @@index([vehicleId])
   @@map("vehicle_positions")
+}
+
+// ============================================================
+// Sprint 4 — Routes Management
+// ============================================================
+
+/// Minimal container model to support Stops. Expanded with RFID,
+/// capacity, collection frequency, etc. in Sprint 5.
+model Container {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  latitude  Decimal  @db.Decimal(9, 6)
+  longitude Decimal  @db.Decimal(9, 6)
+  zone      String?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  stops Stop[]
+
+  @@map("containers")
+}
+
+enum RouteStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum Shift {
+  MORNING
+  EVENING
+}
+
+model Route {
+  id            String      @id @default(uuid())
+  name          String
+  vehicleId     String      @map("vehicle_id")
+  driverId      String      @map("driver_id")
+  scheduledDate DateTime    @map("scheduled_date") @db.Date
+  shift         Shift
+  status        RouteStatus @default(PLANNED)
+  startTime     DateTime?   @map("start_time")
+  endTime       DateTime?   @map("end_time")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+  driver  Driver  @relation(fields: [driverId], references: [id])
+  stops   Stop[]
+
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([scheduledDate])
+  @@index([status])
+  @@map("routes")
+}
+
+enum StopStatus {
+  PENDING
+  COLLECTED
+  MISSED
+}
+
+model Stop {
+  id            String     @id @default(uuid())
+  routeId       String     @map("route_id")
+  containerId   String     @map("container_id")
+  sequenceOrder Int        @map("sequence_order")
+  status        StopStatus @default(PENDING)
+  arrivedAt     DateTime?  @map("arrived_at")
+  collectedAt   DateTime?  @map("collected_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  route     Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  container Container @relation(fields: [containerId], references: [id])
+
+  @@unique([routeId, sequenceOrder])
+  @@index([routeId])
+  @@index([containerId])
+  @@map("stops")
 }

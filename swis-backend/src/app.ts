@@ -9,6 +9,8 @@ import { authRoutes } from '@features/auth/auth.routes';
 import { vehiclesRoutes } from '@features/vehicles/vehicles.routes';
 import { driversRoutes } from '@features/drivers/drivers.routes';
 import { gpsTrackingRoutes } from '@features/gps-tracking/gps-tracking.routes';
+import { containersRoutes } from '@features/containers/containers.routes';
+import { routesManagementRoutes } from '@features/routes-management/routes.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -32,6 +34,8 @@ export function createApp(): Application {
   app.use('/api/v1/vehicles', vehiclesRoutes);
   app.use('/api/v1/drivers', driversRoutes);
   app.use('/api/v1/tracking', gpsTrackingRoutes);
+  app.use('/api/v1/containers', containersRoutes);
+  app.use('/api/v1/routes', routesManagementRoutes);
 
   // 404 handler for unmatched routes
   app.use((_req, res) => {
