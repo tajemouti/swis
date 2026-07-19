@@ -161,3 +161,87 @@ vehicle. Connecting without a token, or with an expired one, should trigger
 - `npm run lint` / `npm run format`
 - `npm test`
 - `npm run prisma:studio` — visual DB browser
+
+## Sprint 4 — Routes Management
+
+Implements route planning and execution: routes are assigned to a vehicle
+and a driver, carry an ordered list of stops (containers to collect), and
+move through a controlled status lifecycle.
+
+- **`Container`** (Prisma) — minimal model for now (code, lat/lng, zone).
+  Expanded with RFID, capacity, and collection frequency in Sprint 5.
+- **`Route`** — name, vehicle, driver, scheduled date, shift
+  (`MORNING`/`EVENING`), status (`PLANNED → IN_PROGRESS → COMPLETED`, or
+  `CANCELLED` from either of the first two).
+- **`Stop`** — one per container on a route, with `sequenceOrder`, status
+  (`PENDING → COLLECTED`/`MISSED`).
+- **Containers module** — standard CRUD, code uniqueness enforced.
+- **Routes module** — creation is transactional (route + all stops created
+  together; if any container ID is invalid, nothing is persisted).
+  Business rules enforced at the service layer:
+  - Vehicle and driver must exist and be active
+  - No duplicate containers within the same route
+  - Routes can only be edited while `PLANNED`
+  - Status transitions follow a fixed state machine (no skipping states,
+    no reopening `COMPLETED`/`CANCELLED`)
+  - Stops can only be updated while the parent route is `IN_PROGRESS`,
+    and only once (no re-marking an already-collected stop)
+
+### Setup (additive to Sprints 1–3)
+
+```bash
+npx prisma migrate dev --name add_routes_management
+npm run dev
+```
+
+### Try it
+
+```bash
+# Create a container
+curl -X POST http://localhost:4000/api/v1/containers \
+  -H "Authorization: Bearer <accessToken>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"CTN-001","latitude":33.57,"longitude":-7.60,"zone":"Zone A"}'
+
+# Create a route (use real vehicleId / driverId / containerId values)
+curl -X POST http://localhost:4000/api/v1/routes \
+  -H "Authorization: Bearer <accessToken>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"Zone A Morning",
+    "vehicleId":"<vehicleId>",
+    "driverId":"<driverId>",
+    "scheduledDate":"2026-07-20",
+    "shift":"MORNING",
+    "stops":["<containerId>"]
+  }'
+
+# Start the route
+curl -X PATCH http://localhost:4000/api/v1/routes/<routeId>/status \
+  -H "Authorization: Bearer <accessToken>" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"IN_PROGRESS"}'
+
+# Mark a stop as collected (only works while route is IN_PROGRESS)
+curl -X PATCH http://localhost:4000/api/v1/routes/<routeId>/stops/<stopId> \
+  -H "Authorization: Bearer <accessToken>" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"COLLECTED"}'
+
+# Complete the route
+curl -X PATCH http://localhost:4000/api/v1/routes/<routeId>/status \
+  -H "Authorization: Bearer <accessToken>" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"COMPLETED"}'
+```
+
+Invalid transitions (e.g. `PLANNED → COMPLETED` directly, or updating a
+stop on a `PLANNED` route) return `400 VALIDATION_ERROR` with a message
+explaining the allowed transitions.
+
+### Scripts
+- `npm run dev` — hot-reload dev server
+- `npm run build` / `npm start` — production build + run
+- `npm run lint` / `npm run format`
+- `npm test`
+- `npm run prisma:studio` — visual DB browser
